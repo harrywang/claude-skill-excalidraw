@@ -1,15 +1,67 @@
 // Render an .excalidraw JSON file to PNG using the real @excalidraw/excalidraw
-// library inside a headless Chromium. Usage:
+// library inside the system's installed Chrome (or any Chromium-based browser
+// already on the machine — no Chromium download required). Usage:
 //
 //   node render.js <input.excalidraw> [output.png] [--scale=2]
 //
 // Defaults: writes to <input>.png at scale=2.
-import puppeteer from 'puppeteer';
+//
+// To override the Chrome path explicitly, set PUPPETEER_EXECUTABLE_PATH.
+import puppeteer from 'puppeteer-core';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
+import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+function findChrome() {
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+    return process.env.PUPPETEER_EXECUTABLE_PATH;
+  }
+  const platform = os.platform();
+  const candidates = [];
+  if (platform === 'darwin') {
+    candidates.push(
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      '/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary',
+      '/Applications/Chromium.app/Contents/MacOS/Chromium',
+      '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',
+      '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+      '/Applications/Arc.app/Contents/MacOS/Arc',
+    );
+  } else if (platform === 'linux') {
+    for (const cmd of ['google-chrome', 'google-chrome-stable',
+                       'chromium', 'chromium-browser',
+                       'brave-browser', 'microsoft-edge']) {
+      try {
+        const p = execSync(`command -v ${cmd}`, { stdio: ['ignore', 'pipe', 'ignore'] })
+          .toString().trim();
+        if (p) candidates.push(p);
+      } catch {}
+    }
+  } else if (platform === 'win32') {
+    const pf = process.env['ProgramFiles'] ?? 'C:\\Program Files';
+    const pf86 = process.env['ProgramFiles(x86)'] ?? 'C:\\Program Files (x86)';
+    const localApp = process.env['LOCALAPPDATA'] ?? '';
+    candidates.push(
+      `${pf}\\Google\\Chrome\\Application\\chrome.exe`,
+      `${pf86}\\Google\\Chrome\\Application\\chrome.exe`,
+      `${localApp}\\Google\\Chrome\\Application\\chrome.exe`,
+      `${pf}\\Microsoft\\Edge\\Application\\msedge.exe`,
+      `${pf86}\\Microsoft\\Edge\\Application\\msedge.exe`,
+    );
+  }
+  for (const c of candidates) {
+    if (c && fs.existsSync(c)) return c;
+  }
+  throw new Error(
+    'No Chrome / Chromium / Brave / Edge found on your system.\n' +
+    'Either install Chrome (https://www.google.com/chrome/) or set\n' +
+    'PUPPETEER_EXECUTABLE_PATH=/path/to/your/browser before running.'
+  );
+}
 
 function parseArgs(argv) {
   const args = { positional: [], scale: 2 };
@@ -32,8 +84,10 @@ const outputPath = args.positional[1]
 const raw = fs.readFileSync(inputPath, 'utf8');
 const data = JSON.parse(raw);
 
+const executablePath = findChrome();
 const browser = await puppeteer.launch({
   headless: 'new',
+  executablePath,
   args: ['--no-sandbox', '--disable-setuid-sandbox'],
 });
 try {

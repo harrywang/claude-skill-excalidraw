@@ -1,16 +1,11 @@
 {
-  "name": "excalidraw-export",
+  "name": "excalidraw-renderer",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "description": "Render .excalidraw files to PNG via the real @excalidraw/excalidraw library inside system Chrome.",
   "type": "module",
+  "main": "render.js",
+  "license": "MIT",
   "dependencies": {
-    "puppeteer": "^24.42.0"
+    "puppeteer-core": "^24.42.0"
   }
 }

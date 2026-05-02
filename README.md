@@ -28,12 +28,23 @@ on top, not replacements.
 | For | Tool | Required? | One-time setup |
 |---|---|---|---|
 | Generating `.excalidraw` JSON (upstream + helpers) | **Python 3.10+** | yes (stdlib only — **no pip installs**) | install Python via `uv`, system, or pyenv |
-| Rendering to PNG | **Node 18+** + Puppeteer | only if you want PNG output | `cd renderer && npm install` (downloads Chromium ≈150 MB once) |
+| Rendering to PNG | **Node 18+** + a Chromium-based browser already on your system | only if you want PNG output | `cd renderer && npm install` (≈5 MB, no Chromium download) |
 
-Python: every script in this repo (upstream `add-arrow.py`,
-`add-icon-to-diagram.py`, `split-excalidraw-library.py`, plus my `lib.py`
-and `snake_pipeline.py`) uses only the Python standard library. There is
-nothing to `pip install`.
+A few clarifications:
+
+- **No Excalidraw repo clone needed.** The renderer dynamically imports
+  `@excalidraw/excalidraw@0.17.6` from `esm.sh` at run time. Nothing of
+  Excalidraw's source ends up on disk.
+- **No Chromium download needed.** The renderer uses `puppeteer-core` and
+  drives whichever Chromium-based browser you already have installed
+  (Chrome, Chromium, Brave, Edge, Arc — autodetected). If you happen to
+  have none of those, install Chrome from <https://www.google.com/chrome/>
+  or set `PUPPETEER_EXECUTABLE_PATH=/path/to/your/browser` to point at any
+  other Chromium build.
+- **No third-party Python deps.** Every script in this repo (upstream
+  `add-arrow.py`, `add-icon-to-diagram.py`, `split-excalidraw-library.py`,
+  plus my `lib.py` and `snake_pipeline.py`) uses only the Python standard
+  library. There is nothing to `pip install`.
 
 ## Install
 
@@ -161,8 +172,9 @@ Each path I tried before forking had a gap:
 
 The bundled renderer takes the only path that's both **faithful** and
 **reliable**: it loads the real `@excalidraw/excalidraw@0.17.6` ESM bundle
-inside a Puppeteer-driven Chromium and calls `exportToBlob()` on your
-elements. The output is exactly what excalidraw.com would give you.
+inside the system Chrome (driven by `puppeteer-core`, no Chromium
+download) and calls `exportToBlob()` on your elements. The output is
+exactly what excalidraw.com would give you.
 
 ## Refined palette
 
@@ -238,11 +250,10 @@ The `.excalidraw` JSON is the authoritative source. To make changes:
 
 | Symptom | Fix |
 |---|---|
-| `Could not find Chromium` | Re-run `npm install` in `renderer/` (or `npx puppeteer browsers install chrome`) |
+| `No Chrome / Chromium / Brave / Edge found on your system` | Install Chrome from <https://www.google.com/chrome/>, or set `PUPPETEER_EXECUTABLE_PATH=/path/to/your/browser` |
 | Text overflows boxes | Reduce `size` or shorten lines. Three short lines fit cleanly in `240 × 110` |
 | Arrows misaligned | Recompute `y = box_y + box_height / 2`; arrow `x` start = `box_x + box_width`, end = next `box_x` |
 | Diagram empty / blank | Confirm `npm install` succeeded; rerun with full logs (`node render.js … 2>&1`) |
-| First render is slow | Puppeteer downloads Chromium on first run (~150 MB, one-time); next renders are ~3 s |
 | Module load timeout | esm.sh CDN occasionally slow — re-run; the bundle gets cached locally after first load |
 
 ## License & attribution

@@ -625,7 +625,8 @@ The upstream skill outputs only `.excalidraw` JSON, which doesn't render in
 plain Markdown viewers (Obsidian without the Excalidraw plugin, GitHub,
 LinkedIn, etc.). This fork bundles a local renderer that converts any
 `.excalidraw` file into a faithful hand-drawn PNG using the **actual
-`@excalidraw/excalidraw` library** inside a headless Chromium.
+`@excalidraw/excalidraw` library** inside whichever Chromium-based
+browser is already installed on your system (Chrome, Brave, Edge, etc.).
 
 ### One-time setup
 
@@ -634,7 +635,11 @@ cd ~/.claude/skills/excalidraw/renderer
 npm install
 ```
 
-(Puppeteer downloads Chromium ~150 MB on first install.)
+This installs `puppeteer-core` only (~5 MB). It does **not** download
+Chromium — the renderer uses whichever Chromium-based browser you already
+have on your system (Chrome, Chromium, Brave, Edge, Arc — autodetected).
+If you have none of those, install Chrome or set
+`PUPPETEER_EXECUTABLE_PATH=/path/to/your/browser`.
 
 ### Render command
 
@@ -659,13 +664,14 @@ After generating the `.excalidraw` JSON via the upstream workflow above:
 
 ```
 diagram.excalidraw
-   ↓ Puppeteer launches headless Chromium
+   ↓ puppeteer-core launches the system Chrome / Brave / Edge headlessly
    ↓ render.html dynamically imports @excalidraw/excalidraw@0.17.6 from esm.sh
    ↓ Excalidraw.exportToBlob({elements, appState, files})
 diagram.png
 ```
 
-See [`renderer/README.md`](renderer/README.md) for details.
+See [`renderer/README.md`](renderer/README.md) for details (browser
+autodetection order, `PUPPETEER_EXECUTABLE_PATH` override, etc.).
 
 ## Refined Palette + Helper Library
 
