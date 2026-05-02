@@ -5,6 +5,9 @@
   "type": "module",
   "main": "render.js",
   "license": "MIT",
+  "scripts": {
+    "install-chromium": "node install-chromium.js"
+  },
   "dependencies": {
     "puppeteer-core": "^24.42.0"
   }

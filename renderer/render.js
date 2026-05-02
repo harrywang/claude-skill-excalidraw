@@ -17,9 +17,12 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 function findChrome() {
+  // 1. Explicit override via env var.
   if (process.env.PUPPETEER_EXECUTABLE_PATH) {
     return process.env.PUPPETEER_EXECUTABLE_PATH;
   }
+
+  // 2. System-installed browser.
   const platform = os.platform();
   const candidates = [];
   if (platform === 'darwin') {
@@ -56,10 +59,23 @@ function findChrome() {
   for (const c of candidates) {
     if (c && fs.existsSync(c)) return c;
   }
+
+  // 3. Locally-cached Chrome (downloaded earlier via `npm run install-chromium`).
+  const cachedMarker = path.join(__dirname, '.cache', 'chrome-path');
+  if (fs.existsSync(cachedMarker)) {
+    const cached = fs.readFileSync(cachedMarker, 'utf8').trim();
+    if (cached && fs.existsSync(cached)) return cached;
+  }
+
+  // 4. Out of options.
   throw new Error(
     'No Chrome / Chromium / Brave / Edge found on your system.\n' +
-    'Either install Chrome (https://www.google.com/chrome/) or set\n' +
-    'PUPPETEER_EXECUTABLE_PATH=/path/to/your/browser before running.'
+    '\n' +
+    'Pick one:\n' +
+    '  • Install Chrome:           https://www.google.com/chrome/\n' +
+    '  • Or download a bundled Chrome locally to this skill (one-time, ~150 MB):\n' +
+    '        cd ' + __dirname + ' && npm run install-chromium\n' +
+    '  • Or set PUPPETEER_EXECUTABLE_PATH=/path/to/your/browser'
   );
 }
 

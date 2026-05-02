@@ -638,8 +638,14 @@ npm install
 This installs `puppeteer-core` only (~5 MB). It does **not** download
 Chromium — the renderer uses whichever Chromium-based browser you already
 have on your system (Chrome, Chromium, Brave, Edge, Arc — autodetected).
-If you have none of those, install Chrome or set
-`PUPPETEER_EXECUTABLE_PATH=/path/to/your/browser`.
+
+If you don't have any Chromium-based browser:
+
+- Install Chrome (<https://www.google.com/chrome/>), **or**
+- Run `npm run install-chromium` once inside `renderer/` to download a
+  bundled Chrome into a local `.cache/` (~150 MB, one-time). `render.js`
+  picks it up automatically afterwards.
+- **Or** set `PUPPETEER_EXECUTABLE_PATH=/path/to/your/browser`.
 
 ### Render command
 

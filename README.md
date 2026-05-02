@@ -35,12 +35,16 @@ A few clarifications:
 - **No Excalidraw repo clone needed.** The renderer dynamically imports
   `@excalidraw/excalidraw@0.17.6` from `esm.sh` at run time. Nothing of
   Excalidraw's source ends up on disk.
-- **No Chromium download needed.** The renderer uses `puppeteer-core` and
-  drives whichever Chromium-based browser you already have installed
-  (Chrome, Chromium, Brave, Edge, Arc — autodetected). If you happen to
-  have none of those, install Chrome from <https://www.google.com/chrome/>
-  or set `PUPPETEER_EXECUTABLE_PATH=/path/to/your/browser` to point at any
-  other Chromium build.
+- **No Chromium download by default.** The renderer uses `puppeteer-core`
+  and drives whichever Chromium-based browser you already have installed
+  (Chrome, Chromium, Brave, Edge, Arc — autodetected). If you don't have
+  any of those, you have three options:
+  1. Install Chrome from <https://www.google.com/chrome/> (recommended).
+  2. Run `npm run install-chromium` inside `renderer/` to download a
+     bundled Chrome into the skill's local `.cache/` (~150 MB, one-time).
+     `render.js` picks it up automatically afterwards.
+  3. Point at any other Chromium build with
+     `PUPPETEER_EXECUTABLE_PATH=/path/to/your/browser`.
 - **No third-party Python deps.** Every script in this repo (upstream
   `add-arrow.py`, `add-icon-to-diagram.py`, `split-excalidraw-library.py`,
   plus my `lib.py` and `snake_pipeline.py`) uses only the Python standard
@@ -250,7 +254,7 @@ The `.excalidraw` JSON is the authoritative source. To make changes:
 
 | Symptom | Fix |
 |---|---|
-| `No Chrome / Chromium / Brave / Edge found on your system` | Install Chrome from <https://www.google.com/chrome/>, or set `PUPPETEER_EXECUTABLE_PATH=/path/to/your/browser` |
+| `No Chrome / Chromium / Brave / Edge found on your system` | Install Chrome from <https://www.google.com/chrome/>, or run `npm run install-chromium` inside `renderer/` to download a bundled Chrome locally, or set `PUPPETEER_EXECUTABLE_PATH=/path/to/your/browser` |
 | Text overflows boxes | Reduce `size` or shorten lines. Three short lines fit cleanly in `240 × 110` |
 | Arrows misaligned | Recompute `y = box_y + box_height / 2`; arrow `x` start = `box_x + box_width`, end = next `box_x` |
 | Diagram empty / blank | Confirm `npm install` succeeded; rerun with full logs (`node render.js … 2>&1`) |

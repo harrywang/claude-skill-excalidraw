@@ -27,8 +27,22 @@ PUPPETEER_EXECUTABLE_PATH=/Applications/Brave\ Browser.app/Contents/MacOS/Brave\
   node render.js diagram.excalidraw
 ```
 
-If you have **no** Chromium-based browser, install Chrome from
-<https://www.google.com/chrome/>.
+If you have **no** Chromium-based browser, you have three options:
+
+```bash
+# 1. Install Chrome system-wide (recommended)
+#    https://www.google.com/chrome/
+
+# 2. Or download a bundled Chrome into this skill's local .cache/
+#    (~150 MB, one-time; uses @puppeteer/browsers under the hood)
+npm run install-chromium
+
+# 3. Or point at any other Chromium-based browser you have
+PUPPETEER_EXECUTABLE_PATH=/path/to/your/browser node render.js …
+```
+
+`render.js` autodetects in this order: env var → system browser → bundled
+download in `.cache/`. The first match wins.
 
 ## Usage
 
