@@ -1,40 +1,27 @@
 # claude-skill-excalidraw
 
-A Claude Code skill for generating **hand-drawn Excalidraw diagrams** from a
-description, rendering them to PNG using the **actual `@excalidraw/excalidraw`
-library** inside a headless Chromium, and embedding them in Obsidian (or any
-Markdown) notes.
+A fork of the [`excalidraw-diagram-generator`](https://github.com/github/awesome-copilot/tree/main/skills/excalidraw-diagram-generator)
+skill from [`github/awesome-copilot`](https://github.com/github/awesome-copilot)
+with two additions:
 
-The output is the genuine rough.js sketchy aesthetic — not a CSS approximation,
-not a clean-line SVG, the same renderer that drives [excalidraw.com](https://excalidraw.com).
+1. **PNG rendering.** The upstream skill outputs `.excalidraw` JSON only,
+   which doesn't render in plain Markdown viewers (Obsidian without the
+   Excalidraw plugin, GitHub, LinkedIn, etc.). This fork bundles a local
+   renderer that produces a faithful hand-drawn PNG using the **actual
+   `@excalidraw/excalidraw` library** inside a headless Chromium.
+2. **Refined palette + Python helper library.** A small `lib.py` with a
+   pale warm/cool palette (`PAL_GOAL`, `PAL_AI`, `PAL_HUMAN`, `PAL_END`,
+   `PAL_NEUTRAL`) and building helpers (`rectangle`, `labeled_box`,
+   `arrow`, `save_doc`) for diagrams that don't want to read like a
+   rainbow.
+
+Everything else — the upstream `SKILL.md`, the 8 diagram-type templates,
+the references on the Excalidraw schema and element types, the icon-library
+scripts (`add-icon-to-diagram.py`, `add-arrow.py`, `split-excalidraw-library.py`)
+— is included **verbatim** from upstream. The two additions are layered
+on top, not replacements.
 
 ![Snake pipeline example](examples/snake_pipeline.png)
-
-## Why this skill exists
-
-There are several Excalidraw tooling options floating around, but each had a gap:
-
-- **The native `excalidraw-diagram-generator` skill** outputs `.excalidraw`
-  JSON only. Without the Excalidraw plugin in Obsidian (or excalidraw.com open
-  in a browser), the file doesn't render.
-- **Hand-rolled SVGs** mimic the look but feel sterile — straight lines,
-  uniform strokes, none of the warmth.
-- **`roughjs` directly** gets close but isn't pixel-identical to what
-  Excalidraw produces, and doesn't handle bound text or arrowheads well.
-- **`excalidraw_export` on npm** depends on the native `canvas` package which
-  fails to compile on modern Node + macOS without extra system libraries.
-
-This skill takes the only path that's both **faithful** and **reliable**:
-it loads the real `@excalidraw/excalidraw@0.17.6` ESM bundle inside a
-Puppeteer-driven Chromium and calls `exportToBlob()` on your elements. The
-output is exactly what excalidraw.com would give you.
-
-It bundles everything end-to-end:
-
-1. **Compose** `.excalidraw` JSON with a small set of Python helpers
-   (`rectangle`, `labeled_box`, `arrow`, etc.) and a refined default palette.
-2. **Render** to PNG via the bundled local renderer (one-time `npm install`).
-3. **Embed** `![[diagram.png]]` in the current note.
 
 ## Install
 
@@ -46,32 +33,41 @@ cd ~/.claude/skills/excalidraw/renderer
 npm install
 ```
 
-The `npm install` step downloads Chromium (~150 MB) once via Puppeteer.
-First render takes a few extra seconds while the `@excalidraw/excalidraw`
-bundle is fetched from `esm.sh`; subsequent renders are ~2–3 s.
+The `npm install` step downloads Chromium (~150 MB) once via Puppeteer and
+is only needed if you want to render to PNG. The upstream JSON-generation
+workflow works without it.
+
+The skill registers itself with Claude Code as `excalidraw-diagram-generator`
+(the upstream name preserved in `SKILL.md` frontmatter), so existing prompts
+that target the upstream skill continue to work.
 
 ## Usage
 
 ### Inside Claude Code (intended path)
 
-Just ask. The skill auto-triggers on prompts like:
+Prompts that auto-trigger the skill:
 
-- "Create a pipeline diagram for this post"
-- "Make a flowchart of the auth flow"
-- "Visualize this process"
-- "Mind map the project structure"
+- "Create a diagram showing…"
+- "Make a flowchart for…"
+- "Visualize the process of…"
+- "Mind map about…"
+- "Pipeline diagram for…"
+- "Architecture diagram of…"
 
-Claude will:
+The full upstream trigger list and 9 supported diagram types
+(flowchart, relationship, mind map, architecture, DFD, swimlane, class,
+sequence, ER) are documented in [`SKILL.md`](SKILL.md).
 
-1. Decide where to save (next to the current note).
-2. Write a Python build script that imports `lib.py`.
-3. Run it to produce `<name>.excalidraw`.
-4. Run the renderer to produce `<name>.png`.
-5. Insert `![[<name>.png]]` into the note.
+What Claude does:
 
-The build script is single-use and gets deleted after running. The
-`.excalidraw` source stays alongside the note as the editable original —
-drop it into [excalidraw.com](https://excalidraw.com) anytime to tweak.
+1. Picks the right diagram type and layout from the request.
+2. Either composes the `.excalidraw` JSON directly (upstream path) or
+   uses the helpers in [`lib.py`](lib.py) with the refined palette
+   (added path).
+3. Saves `<descriptive-name>.excalidraw` next to the relevant note.
+4. **(added)** Runs `node renderer/render.js …` to produce
+   `<descriptive-name>.png` alongside.
+5. **(added)** Embeds `![[<descriptive-name>.png]]` in the current note.
 
 ### As a standalone tool
 
@@ -102,110 +98,86 @@ node ~/.claude/skills/excalidraw/renderer/render.js my-diagram.excalidraw
 # → my-diagram.png
 ```
 
-## Helper API
+For more elaborate diagrams (sequence, ER, class, AWS architecture with
+icons), follow the upstream workflow in `SKILL.md`. The bundled
+[`templates/`](templates/) and [`scripts/`](scripts/) are inherited from
+upstream and work as documented there.
 
-All helpers live in [`lib.py`](lib.py).
+## Why bother forking?
 
-### Shapes
+Each path I tried before forking had a gap:
 
-| Function | Purpose |
-|---|---|
-| `rectangle(x, y, w, h, bg, stroke)` | Bare rounded rectangle |
-| `ellipse(x, y, w, h, bg, stroke)` | Bare ellipse |
-| `diamond(x, y, w, h, bg, stroke)` | Bare diamond (decision shape) |
+- **Upstream `excalidraw-diagram-generator`** outputs JSON only; without
+  the Excalidraw plugin in Obsidian (or the editor at excalidraw.com),
+  the file doesn't render.
+- **Hand-rolled SVGs** mimic the look but feel sterile — straight lines,
+  uniform strokes, none of the warmth.
+- **`roughjs` directly** gets close but isn't pixel-identical to what
+  Excalidraw produces, and doesn't handle bound text or arrowheads well.
+- **`excalidraw_export` on npm** depends on the native `canvas` package
+  which fails to compile on modern Node + macOS without extra system
+  libraries.
 
-### Composite (most-used)
+The bundled renderer takes the only path that's both **faithful** and
+**reliable**: it loads the real `@excalidraw/excalidraw@0.17.6` ESM bundle
+inside a Puppeteer-driven Chromium and calls `exportToBlob()` on your
+elements. The output is exactly what excalidraw.com would give you.
 
-```python
-labeled_box(x, y, w, h, lines, palette, sizes=None, shape="rectangle")
-```
+## Refined palette
 
-Returns a list: `[shape, text_line_1, text_line_2, …]`. The text is
-vertically centered inside the shape, with the first line slightly larger
-as a title.
+| Palette       | Use                              | bg        | stroke    | title     |
+|---------------|----------------------------------|-----------|-----------|-----------|
+| `PAL_GOAL`    | Start node / intent              | `#fff7d6` | `#a8860a` | `#7a6207` |
+| `PAL_AI`      | Worker / process steps           | `#e6efff` | `#3a5fa3` | `#1d3a72` |
+| `PAL_HUMAN`   | Single accent / outlier          | `#ffe1d4` | `#b9522b` | `#7a3416` |
+| `PAL_END`     | Terminal / success               | `#e3f5ec` | `#3a8a64` | `#1f5a3e` |
+| `PAL_NEUTRAL` | Generic                          | `#f1f3f5` | `#495057` | `#212529` |
 
-- `palette` is one of the `PAL_*` dicts (see below) — `{bg, stroke, title}`.
-- `shape` can be `"rectangle"`, `"ellipse"`, or `"diamond"`.
-- `sizes` can override the default `[17, 15, 15, …]` sizing.
+Design rule: keep most boxes the same color (usually `PAL_AI`) and reserve
+`PAL_HUMAN` (or any contrasting palette) for the **single** outlier you
+want the eye to land on. The classic Excalidraw primaries
+(`PAL_VIBRANT_YELLOW`, `PAL_VIBRANT_BLUE`, `PAL_VIBRANT_RED`,
+`PAL_VIBRANT_GREEN`, `PAL_VIBRANT_PURPLE`) are also exported from
+`lib.py` if you prefer the louder original look.
 
-### Text and arrows
-
-```python
-text(x, y, w, content, size=18, color, align="center")
-arrow(x1, y1, x2, y2, color="#495057", label=None)
-```
-
-`arrow(label="yes")` returns a list: `[arrow, label_text]` so the label
-sits near the arrow midpoint.
-
-### Persistence
-
-```python
-save_doc(elements, path, view_bg="#ffffff")
-```
-
-Flattens nested lists automatically — you can append `labeled_box(...)`
-results with `+=` and pass the whole list straight to `save_doc`.
-
-## Palettes
-
-`lib.py` ships two palette families.
-
-### Refined (default — recommended)
-
-Pale, warm/cool rhythm. Use **one `PAL_AI`** for all worker steps and
-reserve **one `PAL_HUMAN`** (or any other contrasting palette) for the
-single step you want the eye to land on. Rainbow = noisy; one-accent = clear.
-
-| Palette       | bg        | stroke    | title     | When to use                          |
-|---------------|-----------|-----------|-----------|--------------------------------------|
-| `PAL_GOAL`    | `#fff7d6` | `#a8860a` | `#7a6207` | Start node / intent                  |
-| `PAL_AI`      | `#e6efff` | `#3a5fa3` | `#1d3a72` | Worker / process steps               |
-| `PAL_HUMAN`   | `#ffe1d4` | `#b9522b` | `#7a3416` | Single accent / outlier              |
-| `PAL_END`     | `#e3f5ec` | `#3a8a64` | `#1f5a3e` | Terminal / success                   |
-| `PAL_NEUTRAL` | `#f1f3f5` | `#495057` | `#212529` | Generic / unimportant                |
-
-### Vibrant (Excalidraw classic)
-
-The original Excalidraw primaries — louder, useful for kid-friendly or
-high-contrast diagrams.
-
-`PAL_VIBRANT_YELLOW`, `PAL_VIBRANT_BLUE`, `PAL_VIBRANT_RED`,
-`PAL_VIBRANT_GREEN`, `PAL_VIBRANT_PURPLE`.
-
-## Layout patterns
-
-The skill ships sample coordinate systems for common layouts. See
-[`SKILL.md`](SKILL.md) for the full table; quick reference:
-
-| Layout | Use for | Coordinates |
-|---|---|---|
-| **Linear** | 3–5 step flowcharts | `y=200`, `x = 40, 340, 640, 940`, arrows at `y+h/2` |
-| **Snake** | 6–8 step pipelines that wrap | Two rows, alternating direction (see `examples/snake_pipeline.py`) |
-| **Decision flow** | Yes/no branching | `labeled_box(..., shape="diamond")` + labelled arrows |
-| **Mind map** | Concept hierarchy | Central node + radial branches at `2π · i / N` |
-| **Grid** | Relationship diagrams | `cols × rows` with arrows between related boxes |
-
-## How it works
+## Repo layout
 
 ```
-your prompt
-   ↓
-SKILL.md (read by Claude)
-   ↓
-Claude writes a small Python build script
-   ↓ uses lib.py helpers
-diagram.excalidraw  ← editable source
-   ↓
-node renderer/render.js
-   ↓ Puppeteer launches headless Chromium
-   ↓ render.html imports @excalidraw/excalidraw from esm.sh
-   ↓ Excalidraw.exportToBlob({elements, appState, files})
-diagram.png  ← embed in note
+claude-skill-excalidraw/
+├── README.md                ← you are here
+├── SKILL.md                 ← upstream skill instructions + appendix on PNG/palette
+├── LICENSE                  ← MIT (compatible with upstream MIT)
+│
+├── lib.py                   ← (added) Python helpers + refined palette
+├── examples/                ← (added)
+│   ├── snake_pipeline.py    ←   worked example using lib.py
+│   └── snake_pipeline.png   ←   rendered output (README hero)
+├── renderer/                ← (added)
+│   ├── render.html          ←   loads @excalidraw/excalidraw from esm.sh
+│   ├── render.js            ←   Puppeteer driver, exportToBlob → PNG
+│   ├── package.json         ←   single dep: puppeteer
+│   ├── .gitignore           ←   excludes node_modules
+│   └── README.md
+│
+├── references/              ← (upstream verbatim) full Excalidraw schema docs
+│   ├── element-types.md
+│   └── excalidraw-schema.md
+├── scripts/                 ← (upstream verbatim) icon-library tooling
+│   ├── add-arrow.py
+│   ├── add-icon-to-diagram.py
+│   ├── split-excalidraw-library.py
+│   ├── README.md
+│   └── .gitignore
+└── templates/               ← (upstream verbatim) starter .excalidraw files
+    ├── flowchart-template.excalidraw
+    ├── relationship-template.excalidraw
+    ├── mindmap-template.excalidraw
+    ├── data-flow-diagram-template.excalidraw
+    ├── business-flow-swimlane-template.excalidraw
+    ├── class-diagram-template.excalidraw
+    ├── sequence-diagram-template.excalidraw
+    └── er-diagram-template.excalidraw
 ```
-
-The renderer is just two files (`render.html`, `render.js`) plus a single
-npm dep (`puppeteer`). No `canvas` native build, no React polyfills.
 
 ## Editing diagrams later
 
@@ -217,9 +189,6 @@ The `.excalidraw` JSON is the authoritative source. To make changes:
 4. Re-run `node ~/.claude/skills/excalidraw/renderer/render.js path/to/file.excalidraw`
    to regenerate the PNG.
 
-For small mechanical edits (changing a label, swapping a color), you can
-also edit the JSON directly in your editor — keys are stable and human-readable.
-
 ## Troubleshooting
 
 | Symptom | Fix |
@@ -229,27 +198,15 @@ also edit the JSON directly in your editor — keys are stable and human-readabl
 | Arrows misaligned | Recompute `y = box_y + box_height / 2`; arrow `x` start = `box_x + box_width`, end = next `box_x` |
 | Diagram empty / blank | Confirm `npm install` succeeded; rerun with full logs (`node render.js … 2>&1`) |
 | First render is slow | Puppeteer downloads Chromium on first run (~150 MB, one-time); next renders are ~3 s |
-| Module load timeout | esm.sh CDN is occasionally slow — re-run; the bundle gets cached locally after first load |
+| Module load timeout | esm.sh CDN occasionally slow — re-run; the bundle gets cached locally after first load |
 
-## Repo layout
+## License & attribution
 
-```
-claude-skill-excalidraw/
-├── README.md              ← you are here
-├── SKILL.md               ← Claude Code skill instructions
-├── LICENSE                ← MIT
-├── lib.py                 ← Python helpers (importable)
-├── examples/
-│   ├── snake_pipeline.py  ← worked example
-│   └── snake_pipeline.png ← rendered output
-└── renderer/
-    ├── render.html        ← loads @excalidraw/excalidraw from esm.sh
-    ├── render.js          ← Puppeteer driver, exportToBlob → PNG
-    ├── package.json
-    ├── .gitignore         ← excludes node_modules, package-lock.json
-    └── README.md
-```
+MIT — see [`LICENSE`](LICENSE).
 
-## License
-
-MIT — see [LICENSE](LICENSE).
+Upstream: [`github/awesome-copilot`](https://github.com/github/awesome-copilot)
+is also MIT-licensed. The contents of `SKILL.md` (Sections 1–6 and the
+upstream `## References`/`## Limitations`/`## Future Enhancements`
+sections), `references/`, `scripts/`, and `templates/` are copied verbatim
+from there. Only `README.md`, `lib.py`, `examples/`, `renderer/`, and the
+`# Additions in this fork` section of `SKILL.md` are original to this repo.
