@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Excalidraw Render Host</title>
+  <style>body{margin:0;font-family:sans-serif}</style>
+</head>
+<body>
+<div id="status">loading…</div>
+<script type="module">
+  try {
+    const Excalidraw = await import('https://esm.sh/@excalidraw/excalidraw@0.17.6');
+    window.Excalidraw = Excalidraw;
+    window.exportFns = {
+      exportToBlob: Excalidraw.exportToBlob ?? Excalidraw.default?.exportToBlob,
+      exportToSvg: Excalidraw.exportToSvg ?? Excalidraw.default?.exportToSvg,
+      exportToCanvas: Excalidraw.exportToCanvas ?? Excalidraw.default?.exportToCanvas,
+    };
+    window.exportKeys = Object.keys(Excalidraw);
+    window.renderReady = true;
+    document.getElementById('status').textContent = 'ready · keys=' + window.exportKeys.length;
+  } catch (err) {
+    window.renderError = String(err && err.stack || err);
+    document.getElementById('status').textContent = 'error: ' + window.renderError;
+  }
+</script>
+</body>
+</html>
