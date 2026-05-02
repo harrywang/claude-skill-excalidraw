@@ -23,79 +23,125 @@ on top, not replacements.
 
 ![Snake pipeline example](snake-pipeline-example.png)
 
-## What you need locally
+## Prerequisites
 
-| For | Tool | Required? | One-time setup |
-|---|---|---|---|
-| Generating `.excalidraw` JSON (upstream + helpers) | **Python 3.10+** | yes (stdlib only — **no pip installs**) | install Python via `uv`, system, or pyenv |
-| Rendering to PNG | **Node 18+** + a Chromium-based browser already on your system | only if you want PNG output | `cd renderer && npm install` (≈5 MB, no Chromium download) |
+Three things, two are optional. Every command below is meant to be
+copy-pasted as-is.
 
-A few clarifications:
+> **Heads up before you start**
+>
+> - **No Excalidraw repo clone needed** — the renderer dynamically imports
+>   `@excalidraw/excalidraw@0.17.6` from `esm.sh` at run time. Nothing of
+>   Excalidraw's source ends up on disk.
+> - **No Python `pip install` needed** — every script in this repo uses
+>   only the Python standard library.
+> - **No Chromium download needed** (by default) — the renderer drives any
+>   Chromium-based browser you already have. Bundled-Chrome fallback is
+>   one explicit command if you want it.
 
-- **No Excalidraw repo clone needed.** The renderer dynamically imports
-  `@excalidraw/excalidraw@0.17.6` from `esm.sh` at run time. Nothing of
-  Excalidraw's source ends up on disk.
-- **No Chromium download by default.** The renderer uses `puppeteer-core`
-  and drives whichever Chromium-based browser you already have installed
-  (Chrome, Chromium, Brave, Edge, Arc — autodetected). If you don't have
-  any of those, you have three options:
-  1. Install Chrome from <https://www.google.com/chrome/> (recommended).
-  2. Run `npm run install-chromium` inside `renderer/` to download a
-     bundled Chrome into the skill's local `.cache/` (~150 MB, one-time).
-     `render.js` picks it up automatically afterwards.
-  3. Point at any other Chromium build with
-     `PUPPETEER_EXECUTABLE_PATH=/path/to/your/browser`.
-- **No third-party Python deps.** Every script in this repo (upstream
-  `add-arrow.py`, `add-icon-to-diagram.py`, `split-excalidraw-library.py`,
-  plus my `lib.py` and `snake_pipeline.py`) uses only the Python standard
-  library. There is nothing to `pip install`.
+### 1. Python 3.10+ — required
 
-## Install
-
-```bash
-# 1. Clone into Claude's user-skills folder (the skill registers as
-#    `excalidraw-diagram-generator` from SKILL.md frontmatter, so existing
-#    prompts targeting the upstream skill continue to work).
-git clone https://github.com/harrywang/claude-skill-excalidraw \
-  ~/.claude/skills/excalidraw
-
-# 2. (Optional, only if you want PNG output) install renderer deps
-cd ~/.claude/skills/excalidraw/renderer
-npm install
-```
-
-### Recommended: run Python scripts with [uv](https://github.com/astral-sh/uv)
-
-`uv` is the fastest way to use Python without juggling system installs or
-virtualenvs. Install once:
+Used to generate `.excalidraw` JSON. **Recommended: install via [uv](https://github.com/astral-sh/uv)**, which manages Python without polluting your system:
 
 ```bash
 # macOS / Linux
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# or via Homebrew
+# Windows (PowerShell)
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# Or via Homebrew on macOS
 brew install uv
 ```
 
-Then run any bundled script directly — `uv` provisions a Python interpreter
-on demand, no venv to activate, no requirements.txt to install:
+Then make sure you have a Python 3.10+ runtime:
 
 ```bash
+uv python install 3.12
+uv run python --version   # → Python 3.12.x
+```
+
+If you'd rather use system Python (3.10+) — `python3 --version` shows
+3.10 or higher — that works too. Drop the `uv run` prefix from every
+later command and use `python3` directly.
+
+### 2. Node.js 18+ — required only for PNG rendering
+
+Skip this if you only need `.excalidraw` JSON output.
+
+```bash
+# macOS via Homebrew
+brew install node
+
+# Cross-platform via nvm
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+nvm install --lts
+
+# Verify
+node --version    # → v18.x or higher
+```
+
+### 3. A Chromium-based browser — required only for PNG rendering
+
+You almost certainly already have one. The renderer autodetects Chrome,
+Chromium, Brave, Edge, and Arc on macOS / Linux / Windows.
+
+If you don't have any of them, pick one of these (in increasing order of
+intrusiveness):
+
+```bash
+# Option A (recommended): install Chrome system-wide, then continue normally
+open https://www.google.com/chrome/        # macOS — opens download page
+
+# Option B: skip system install — download a bundled Chrome into the skill's
+#          local .cache/ as a one-time step (see `Install` step 3 below)
+
+# Option C: point at any other Chromium build you have
+export PUPPETEER_EXECUTABLE_PATH=/path/to/your/browser
+```
+
+## Install
+
+```bash
+# 1. Clone into Claude's user-skills folder. The skill registers as
+#    `excalidraw-diagram-generator` from SKILL.md frontmatter, so existing
+#    prompts targeting the upstream skill continue to work.
+git clone https://github.com/harrywang/claude-skill-excalidraw \
+  ~/.claude/skills/excalidraw
+
+# 2. (Skip if you don't need PNG output.) Install renderer deps —
+#    ~5 MB of puppeteer-core, no Chromium download.
+cd ~/.claude/skills/excalidraw/renderer
+npm install
+
+# 3. (Skip if step 3 of Prerequisites picked Option A or C.)
+#    Download a bundled Chrome into the skill's local .cache/.
+#    One-time, ~150 MB; render.js auto-finds it afterwards.
+npm run install-chromium
+```
+
+## Verify the install (end-to-end smoke test)
+
+The bundled snake-pipeline example writes a `.excalidraw` source and then
+renders it to PNG.
+
+```bash
+# Generate the example .excalidraw  (replace `uv run python` with `python3` if you skipped uv)
 uv run python ~/.claude/skills/excalidraw/scripts/snake_pipeline.py \
-  /tmp/example.excalidraw
+  /tmp/snake-pipeline.excalidraw
 
-uv run python ~/.claude/skills/excalidraw/scripts/add-arrow.py \
-  diagram.excalidraw 300 250 500 300 --label "HTTPS"
+# Render to PNG  (skip if you didn't install the renderer)
+node ~/.claude/skills/excalidraw/renderer/render.js \
+  /tmp/snake-pipeline.excalidraw
+
+# Open it
+open /tmp/snake-pipeline.png   # macOS
+xdg-open /tmp/snake-pipeline.png   # Linux
 ```
 
-If you'd rather use system Python (3.10+), drop the `uv run` prefix:
-
-```bash
-python3 ~/.claude/skills/excalidraw/scripts/snake_pipeline.py /tmp/example.excalidraw
-```
-
-Both work identically since none of the scripts have third-party Python
-dependencies.
+The PNG should look like the hero image at the top of this README. If it
+does, the skill is fully wired up; restart Claude Code to pick up the new
+skill, then try `"create a pipeline diagram for this note"` from any note.
 
 ## Usage
 
