@@ -6,9 +6,9 @@ Demonstrates:
 - Single-accent palette: PAL_AI for the worker, PAL_HUMAN for the lone outlier
 - Cream PAL_GOAL start node, mint PAL_END finish node
 
-Run from the same folder as your note (so the output sits alongside it):
+Run with uv (recommended) or any Python 3.10+:
 
-    python3 ~/.claude/skills/excalidraw/examples/snake_pipeline.py \
+    uv run python ~/.claude/skills/excalidraw/scripts/snake_pipeline.py \
         path/to/output-folder/baidu-pipeline.excalidraw
 
 Then render to PNG:
@@ -19,8 +19,8 @@ Then render to PNG:
 import sys
 import pathlib
 
-# Import helpers from the parent skill folder
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+# Import helpers from the same scripts/ folder
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from lib import (
     text, labeled_box, arrow, save_doc,
     PAL_GOAL, PAL_AI, PAL_HUMAN, PAL_END, GRAY,

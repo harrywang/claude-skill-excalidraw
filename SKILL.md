@@ -673,13 +673,23 @@ The upstream skill suggests Excalidraw's classic primary palette
 (`#ffec99`, `#a5d8ff`, `#ffc9c9`, `#b2f2bb`). When all four colors appear
 in one diagram the result reads as a rainbow.
 
-This fork adds a Python helper module ([`lib.py`](lib.py)) with:
+This fork adds a Python helper module ([`scripts/lib.py`](scripts/lib.py)) with:
 
 1. A **refined palette** — pale, warm/cool rhythm; designed for use with a
    single accent.
 2. **Building helpers** — `rectangle`, `ellipse`, `diamond`, `text`,
    `labeled_box`, `arrow`, `save_doc` — that produce well-formed
    Excalidraw JSON without hand-rolling element scaffolding each time.
+
+`lib.py` uses only the Python standard library; no third-party deps to
+install. To run any of the bundled scripts, use `uv` (recommended) or
+any Python 3.10+:
+
+```bash
+uv run python ~/.claude/skills/excalidraw/scripts/snake_pipeline.py out.excalidraw
+# or, without uv:
+python3 ~/.claude/skills/excalidraw/scripts/snake_pipeline.py out.excalidraw
+```
 
 ### Refined palette (recommended for new diagrams)
 
@@ -703,7 +713,7 @@ For the louder Excalidraw-classic look, `lib.py` also exports
 
 ```python
 import sys, pathlib
-sys.path.insert(0, str(pathlib.Path.home() / ".claude/skills/excalidraw"))
+sys.path.insert(0, str(pathlib.Path.home() / ".claude/skills/excalidraw/scripts"))
 from lib import (
     text, labeled_box, arrow, save_doc,
     PAL_GOAL, PAL_AI, PAL_HUMAN, PAL_END, GRAY,
@@ -719,7 +729,7 @@ elements.append(arrow(580, 255, 640, 255))
 save_doc(elements, "/abs/path/to/diagram.excalidraw")
 ```
 
-See [`examples/snake_pipeline.py`](examples/snake_pipeline.py) for a more
+See [`scripts/snake_pipeline.py`](scripts/snake_pipeline.py) for a more
 elaborate snake-layout pipeline using these helpers.
 
 ### Helper API quick reference

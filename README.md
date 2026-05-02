@@ -21,25 +21,66 @@ scripts (`add-icon-to-diagram.py`, `add-arrow.py`, `split-excalidraw-library.py`
 — is included **verbatim** from upstream. The two additions are layered
 on top, not replacements.
 
-![Snake pipeline example](examples/snake_pipeline.png)
+![Snake pipeline example](snake-pipeline-example.png)
+
+## What you need locally
+
+| For | Tool | Required? | One-time setup |
+|---|---|---|---|
+| Generating `.excalidraw` JSON (upstream + helpers) | **Python 3.10+** | yes (stdlib only — **no pip installs**) | install Python via `uv`, system, or pyenv |
+| Rendering to PNG | **Node 18+** + Puppeteer | only if you want PNG output | `cd renderer && npm install` (downloads Chromium ≈150 MB once) |
+
+Python: every script in this repo (upstream `add-arrow.py`,
+`add-icon-to-diagram.py`, `split-excalidraw-library.py`, plus my `lib.py`
+and `snake_pipeline.py`) uses only the Python standard library. There is
+nothing to `pip install`.
 
 ## Install
 
 ```bash
+# 1. Clone into Claude's user-skills folder (the skill registers as
+#    `excalidraw-diagram-generator` from SKILL.md frontmatter, so existing
+#    prompts targeting the upstream skill continue to work).
 git clone https://github.com/harrywang/claude-skill-excalidraw \
   ~/.claude/skills/excalidraw
 
+# 2. (Optional, only if you want PNG output) install renderer deps
 cd ~/.claude/skills/excalidraw/renderer
 npm install
 ```
 
-The `npm install` step downloads Chromium (~150 MB) once via Puppeteer and
-is only needed if you want to render to PNG. The upstream JSON-generation
-workflow works without it.
+### Recommended: run Python scripts with [uv](https://github.com/astral-sh/uv)
 
-The skill registers itself with Claude Code as `excalidraw-diagram-generator`
-(the upstream name preserved in `SKILL.md` frontmatter), so existing prompts
-that target the upstream skill continue to work.
+`uv` is the fastest way to use Python without juggling system installs or
+virtualenvs. Install once:
+
+```bash
+# macOS / Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# or via Homebrew
+brew install uv
+```
+
+Then run any bundled script directly — `uv` provisions a Python interpreter
+on demand, no venv to activate, no requirements.txt to install:
+
+```bash
+uv run python ~/.claude/skills/excalidraw/scripts/snake_pipeline.py \
+  /tmp/example.excalidraw
+
+uv run python ~/.claude/skills/excalidraw/scripts/add-arrow.py \
+  diagram.excalidraw 300 250 500 300 --label "HTTPS"
+```
+
+If you'd rather use system Python (3.10+), drop the `uv run` prefix:
+
+```bash
+python3 ~/.claude/skills/excalidraw/scripts/snake_pipeline.py /tmp/example.excalidraw
+```
+
+Both work identically since none of the scripts have third-party Python
+dependencies.
 
 ## Usage
 
@@ -62,7 +103,7 @@ What Claude does:
 
 1. Picks the right diagram type and layout from the request.
 2. Either composes the `.excalidraw` JSON directly (upstream path) or
-   uses the helpers in [`lib.py`](lib.py) with the refined palette
+   uses the helpers in [`scripts/lib.py`](scripts/lib.py) with the refined palette
    (added path).
 3. Saves `<descriptive-name>.excalidraw` next to the relevant note.
 4. **(added)** Runs `node renderer/render.js …` to produce
@@ -76,7 +117,7 @@ You can use the helpers and renderer directly without Claude:
 ```python
 # build_my_diagram.py
 import sys, pathlib
-sys.path.insert(0, str(pathlib.Path.home() / ".claude/skills/excalidraw"))
+sys.path.insert(0, str(pathlib.Path.home() / ".claude/skills/excalidraw/scripts"))
 from lib import (
     text, labeled_box, arrow, save_doc,
     PAL_GOAL, PAL_AI, PAL_HUMAN, PAL_END, GRAY,
@@ -93,7 +134,7 @@ save_doc(elements, "my-diagram.excalidraw")
 ```
 
 ```bash
-python3 build_my_diagram.py
+uv run python build_my_diagram.py    # or: python3 build_my_diagram.py
 node ~/.claude/skills/excalidraw/renderer/render.js my-diagram.excalidraw
 # → my-diagram.png
 ```
@@ -142,33 +183,37 @@ want the eye to land on. The classic Excalidraw primaries
 
 ## Repo layout
 
+All Python scripts live in `scripts/` (upstream tooling and my helpers
+together). The bundled renderer is in `renderer/`. Everything in
+`references/` and `templates/` is upstream content.
+
 ```
 claude-skill-excalidraw/
-├── README.md                ← you are here
-├── SKILL.md                 ← upstream skill instructions + appendix on PNG/palette
-├── LICENSE                  ← MIT (compatible with upstream MIT)
+├── README.md                       ← you are here
+├── SKILL.md                        ← upstream skill instructions + appendix
+├── LICENSE                         ← MIT (compatible with upstream MIT)
+├── snake-pipeline-example.png      ← README hero image (rendered output)
 │
-├── lib.py                   ← (added) Python helpers + refined palette
-├── examples/                ← (added)
-│   ├── snake_pipeline.py    ←   worked example using lib.py
-│   └── snake_pipeline.png   ←   rendered output (README hero)
-├── renderer/                ← (added)
-│   ├── render.html          ←   loads @excalidraw/excalidraw from esm.sh
-│   ├── render.js            ←   Puppeteer driver, exportToBlob → PNG
-│   ├── package.json         ←   single dep: puppeteer
-│   ├── .gitignore           ←   excludes node_modules
+├── scripts/                        ← all Python lives here
+│   ├── add-arrow.py                ← (upstream) add an arrow to a diagram
+│   ├── add-icon-to-diagram.py      ← (upstream) add an icon-library icon
+│   ├── split-excalidraw-library.py ← (upstream) split .excalidrawlib files
+│   ├── lib.py                      ← (added) Python helpers + refined palette
+│   ├── snake_pipeline.py           ← (added) worked example using lib.py
+│   ├── README.md                   ← (upstream) icon tooling docs
+│   └── .gitignore                  ← (upstream)
+│
+├── renderer/                       ← (added) PNG rendering
+│   ├── render.html                 ←   loads @excalidraw/excalidraw from esm.sh
+│   ├── render.js                   ←   Puppeteer driver, exportToBlob → PNG
+│   ├── package.json                ←   single dep: puppeteer
+│   ├── .gitignore                  ←   excludes node_modules
 │   └── README.md
 │
-├── references/              ← (upstream verbatim) full Excalidraw schema docs
+├── references/                     ← (upstream verbatim) full Excalidraw schema
 │   ├── element-types.md
 │   └── excalidraw-schema.md
-├── scripts/                 ← (upstream verbatim) icon-library tooling
-│   ├── add-arrow.py
-│   ├── add-icon-to-diagram.py
-│   ├── split-excalidraw-library.py
-│   ├── README.md
-│   └── .gitignore
-└── templates/               ← (upstream verbatim) starter .excalidraw files
+└── templates/                      ← (upstream verbatim) starter .excalidraw files
     ├── flowchart-template.excalidraw
     ├── relationship-template.excalidraw
     ├── mindmap-template.excalidraw
